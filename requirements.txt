@@ -1,0 +1,10 @@
+streamlit>=1.32.0
+xarray>=2024.1.0
+numpy>=1.26.0
+pandas>=2.2.0
+plotly>=5.20.0
+netCDF4>=1.6.5
+scipy>=1.12.0
+dask[array]>=2024.1.0
+zarr>=2.17.0
+tqdm>=4.66.0

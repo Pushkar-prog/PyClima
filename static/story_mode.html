@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PyClimaExplorer · Story Mode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Playfair+Display:ital,wght@0,700;1,700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#04080f;
+  --c1:#e85d2f;
+  --c2:#2f8de8;
+  --c3:#3de8a0;
+  --c4:#e8c32f;
+  --text:#d0d8e8;
+  --muted:#6b7a99;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;overflow-x:hidden;cursor:none;}
+
+/* noise overlay */
+body::before{
+  content:"";position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity:.04;pointer-events:none;z-index:999;
+}
+
+/* cursor */
+#cursor-dot{position:fixed;width:10px;height:10px;background:#e85d2f;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);z-index:9999;mix-blend-mode:screen;transition:transform .1s;}
+#cursor-ring{position:fixed;width:36px;height:36px;border:1.5px solid rgba(232,93,47,.5);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);z-index:9998;mix-blend-mode:screen;transition:transform .15s,left .12s,top .12s;}
+
+/* progress bar */
+#progress-bar{position:fixed;top:0;left:0;height:2px;background:#e85d2f;box-shadow:0 0 8px #e85d2f;width:0%;z-index:1000;transition:width .1s;}
+
+/* nav dots */
+#nav-dots{position:fixed;right:24px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:14px;z-index:500;}
+.dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);cursor:pointer;transition:transform .2s,background .2s;position:relative;}
+.dot.active{background:#e85d2f;transform:scale(1.4);}
+.dot-label{position:absolute;right:18px;top:50%;transform:translateY(-50%);background:#0d1117;color:#d0d8e8;font-size:.7rem;padding:3px 8px;border-radius:4px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s;font-family:'DM Mono',monospace;}
+.dot:hover .dot-label{opacity:1;}
+
+/* sections */
+section{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:80px 10vw;opacity:0;transform:translateY(40px);transition:opacity .7s,transform .7s;}
+section.visible{opacity:1;transform:translateY(0);}
+
+/* eyebrow */
+.eyebrow{font-family:'DM Mono',monospace;font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:20px;}
+
+/* headings */
+h1.display{font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(2.4rem,6vw,5.2rem);line-height:1.1;margin-bottom:24px;}
+h2.chapter{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,3.2rem);line-height:1.2;margin-bottom:20px;}
+
+.subtitle{font-size:1.15rem;color:var(--muted);max-width:640px;line-height:1.7;margin-bottom:36px;}
+.body-text{max-width:620px;line-height:1.8;font-size:1.05rem;color:#b0bdd6;margin-bottom:36px;}
+.body-text strong{color:#fff;}
+
+/* buttons */
+.btn{display:inline-block;padding:14px 32px;border-radius:8px;font-weight:700;font-size:1rem;text-decoration:none;cursor:pointer;border:none;transition:transform .15s,box-shadow .15s;}
+.btn-primary{background:var(--c1);color:#fff;}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(232,93,47,.35);}
+.btn-secondary{background:transparent;border:1.5px solid var(--c3);color:var(--c3);}
+.btn-secondary:hover{background:var(--c3);color:#04080f;transform:translateY(-3px);}
+
+/* accent bars */
+.accent-bar{width:48px;height:3px;border-radius:2px;margin-bottom:28px;}
+
+/* stats row */
+.stats{display:flex;gap:40px;flex-wrap:wrap;margin-bottom:40px;}
+.stat{text-align:center;}
+.stat-val{font-family:'Playfair Display',serif;font-size:2.6rem;font-weight:700;}
+.stat-lbl{font-family:'DM Mono',monospace;font-size:.72rem;letter-spacing:.12em;color:var(--muted);margin-top:4px;}
+
+/* fake viz blocks */
+.viz-block{border-radius:12px;height:220px;position:relative;overflow:hidden;margin-top:12px;max-width:800px;}
+.viz-label{position:absolute;bottom:12px;left:14px;font-family:'DM Mono',monospace;font-size:.7rem;color:rgba(255,255,255,.5);}
+
+/* tas heatmap */
+.viz-tas{background:linear-gradient(135deg,#1a2a6c 0%,#b21f1f 35%,#fdbb2d 60%,#b21f1f 80%,#0f2027 100%);}
+
+/* pr trend */
+.viz-pr{background:linear-gradient(135deg,#6b3a00 0%,#1a3a00 30%,#003a6b 55%,#000a2a 100%);}
+
+/* ENSO bars */
+.viz-enso{display:flex;align-items:flex-end;padding:16px 12px;background:#0d1117;border:1px solid #1e2d3d;gap:2px;}
+.enso-bar{flex:1;border-radius:2px 2px 0 0;transition:opacity .2s;}
+.enso-bar:hover{opacity:.75;}
+
+/* split panel */
+.split-panel{display:flex;border-radius:12px;overflow:hidden;height:220px;max-width:800px;margin-top:12px;position:relative;}
+.split-left{flex:1;background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);}
+.split-right{flex:1;background:linear-gradient(135deg,#b21f1f,#fdbb2d,#ff512f);}
+.split-divider{width:3px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:.9rem;color:#0d1117;font-weight:700;position:relative;z-index:2;}
+.split-label{position:absolute;top:12px;font-family:'DM Mono',monospace;font-size:.7rem;color:rgba(255,255,255,.6);padding:0 12px;}
+
+/* outro */
+#outro{text-align:center;align-items:center;}
+.footer{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--muted);margin-top:28px;letter-spacing:.12em;}
+</style>
+</head>
+<body>
+
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+<div id="progress-bar"></div>
+
+<nav id="nav-dots">
+  <div class="dot active" data-target="intro"><span class="dot-label">Intro</span></div>
+  <div class="dot" data-target="c1"><span class="dot-label">Warming</span></div>
+  <div class="dot" data-target="c2"><span class="dot-label">ENSO</span></div>
+  <div class="dot" data-target="c3"><span class="dot-label">Rainfall</span></div>
+  <div class="dot" data-target="c4"><span class="dot-label">1920 vs 2018</span></div>
+  <div class="dot" data-target="outro"><span class="dot-label">Explore</span></div>
+</nav>
+
+<!-- ═══════════════════ INTRO ═══════════════════ -->
+<section id="intro">
+  <div class="eyebrow">CESM1-Style Synthetic Data · 1920–2018 · 98 Years</div>
+  <h1 class="display">Earth is speaking.<br/>Are you listening?</h1>
+  <p class="subtitle">
+    98 years of climate simulation — warming, ENSO cycles,
+    shifting rainfall, and a century of change distilled into four chapters.
+  </p>
+  <button class="btn btn-primary" onclick="document.getElementById('c1').scrollIntoView({behavior:'smooth'})">Begin Story ↓</button>
+</section>
+
+<!-- ═══════════════════ C1 ═══════════════════ -->
+<section id="c1">
+  <div class="eyebrow">Chapter 01</div>
+  <div class="accent-bar" style="background:var(--c1);"></div>
+  <h2 class="chapter">A Century of Warming</h2>
+  <p class="body-text">
+    From 1920 to 2018 the planet warmed by <strong>+1.1°C</strong>.
+    Polar regions amplified at <strong>3× the global mean</strong>.
+    The trend map makes this unmistakable — every red pixel is a region
+    that warmed faster than Earth's average.
+  </p>
+  <div class="stats">
+    <div class="stat"><div class="stat-val" style="color:var(--c1);" data-target="1.1" data-suffix="°C" data-prefix="+">+0°C</div><div class="stat-lbl">Total Warming</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--c1);" data-target="3" data-suffix="×">0×</div><div class="stat-lbl">Polar Amplification</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--c1);" data-target="98" data-suffix=" yrs">0 yrs</div><div class="stat-lbl">Record Length</div></div>
+  </div>
+  <div class="viz-block viz-tas"><div class="viz-label">TAS Trend Map (simulated)</div></div>
+</section>
+
+<!-- ═══════════════════ C2 ═══════════════════ -->
+<section id="c2">
+  <div class="eyebrow">Chapter 02</div>
+  <div class="accent-bar" style="background:var(--c2);"></div>
+  <h2 class="chapter">El Niño &amp; La Niña Since 1920</h2>
+  <p class="body-text">
+    With 98 years of data we capture roughly <strong>30 complete ENSO cycles</strong>.
+    Each red bar is an El Niño year — warmer oceans, disrupted rainfall, more intense storms globally.
+    Each blue bar is La Niña. No manual labelling: the Niño 3.4 index flags every event automatically.
+  </p>
+  <div class="stats">
+    <div class="stat"><div class="stat-val" style="color:var(--c2);" data-target="30" data-prefix="~" data-suffix=" events">~0 events</div><div class="stat-lbl">ENSO Cycles</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--c2);" data-target="0.5" data-suffix="°C">0°C</div><div class="stat-lbl">Niño 3.4 Threshold</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--c2);" data-target="98" data-suffix=" yrs">0 yrs</div><div class="stat-lbl">Record Length</div></div>
+  </div>
+  <div class="viz-block viz-enso" id="enso-chart"><div class="viz-label">Niño 3.4 Index (simulated)</div></div>
+</section>
+
+<!-- ═══════════════════ C3 ═══════════════════ -->
+<section id="c3">
+  <div class="eyebrow">Chapter 03</div>
+  <div class="accent-bar" style="background:var(--c3);"></div>
+  <h2 class="chapter">Shifting Rainfall Patterns</h2>
+  <p class="body-text">
+    Wet regions get <strong>wetter</strong>, dry regions get <strong>drier</strong>.
+    Extreme precipitation events increase <strong>7% per °C</strong> of warming.
+    Monsoon systems are shifting poleward — a reorganisation visible across the 98-year record.
+  </p>
+  <div class="stats">
+    <div class="stat"><div class="stat-val" style="color:var(--c3);" data-target="7" data-suffix="%/°C">0%/°C</div><div class="stat-lbl">Precip Extreme Increase</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--c3);" data-target="40" data-suffix="% shift">0% shift</div><div class="stat-lbl">Monsoon Shift</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--c3);" data-target="98" data-suffix=" yrs">0 yrs</div><div class="stat-lbl">Record Length</div></div>
+  </div>
+  <div class="viz-block viz-pr"><div class="viz-label">PR Trend Map (simulated)</div></div>
+</section>
+
+<!-- ═══════════════════ C4 ═══════════════════ -->
+<section id="c4">
+  <div class="eyebrow">Chapter 04</div>
+  <div class="accent-bar" style="background:var(--c4);"></div>
+  <h2 class="chapter">1920 vs 2018 — A Century Apart</h2>
+  <p class="body-text">
+    This is not a 30-year comparison. Placing <strong>1920</strong> beside <strong>2018</strong>
+    shows a full century of climate forcing. The Arctic has lost
+    <strong>13% of sea ice per decade</strong>. The difference panel makes the scale of change
+    impossible to ignore.
+  </p>
+  <div class="stats">
+    <div class="stat"><div class="stat-val" style="color:var(--c4);" data-target="13" data-suffix="%/dec">0%/dec</div><div class="stat-lbl">Sea Ice Loss Rate</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--c4);" data-target="98" data-suffix=" yrs">0 yrs</div><div class="stat-lbl">Time Span</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--c4);" data-target="1.1" data-suffix="°C" data-prefix="+">+0°C</div><div class="stat-lbl">Total Warming</div></div>
+  </div>
+  <div class="split-panel">
+    <div class="split-left"><span class="split-label">1920</span></div>
+    <div class="split-divider">↔</div>
+    <div class="split-right"><span class="split-label" style="right:0;left:auto;">2018</span></div>
+  </div>
+</section>
+
+<!-- ═══════════════════ OUTRO ═══════════════════ -->
+<section id="outro">
+  <div class="eyebrow">The story is told</div>
+  <h2 class="chapter" style="font-family:'Playfair Display',serif;font-style:italic;">The data has been told.<br/>Now explore it.</h2>
+  <br/>
+  <button class="btn btn-secondary" onclick="window.open('http://localhost:8501','_blank')">Open Dashboard →</button>
+  <p class="footer" style="margin-top:40px;">PyClimaExplorer · Synthetic CESM1-Style Data · Technex '26</p>
+</section>
+
+<script>
+// cursor
+const dot  = document.getElementById('cursor-dot');
+const ring = document.getElementById('cursor-ring');
+document.addEventListener('mousemove', e => {
+  dot.style.left  = ring.style.left  = e.clientX + 'px';
+  dot.style.top   = ring.style.top   = e.clientY + 'px';
+});
+
+// progress bar
+const bar = document.getElementById('progress-bar');
+window.addEventListener('scroll', () => {
+  const pct = window.scrollY / (document.body.scrollHeight - window.innerHeight) * 100;
+  bar.style.width = Math.min(pct, 100) + '%';
+  updateDots();
+});
+
+// nav dots
+const sections = ['intro','c1','c2','c3','c4','outro'];
+const dots = document.querySelectorAll('.dot');
+dots.forEach((d, i) => {
+  d.addEventListener('click', () => {
+    document.getElementById(sections[i]).scrollIntoView({behavior:'smooth'});
+  });
+});
+function updateDots() {
+  let active = 0;
+  sections.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top < window.innerHeight / 2) active = i;
+  });
+  dots.forEach((d, i) => d.classList.toggle('active', i === active));
+}
+
+// intersection observer
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      animateCounters(e.target);
+    }
+  });
+}, {threshold: 0.15});
+document.querySelectorAll('section').forEach(s => observer.observe(s));
+
+// animated counters
+function animateCounters(section) {
+  section.querySelectorAll('[data-target]').forEach(el => {
+    const target = parseFloat(el.dataset.target);
+    const suffix = el.dataset.suffix || '';
+    const prefix = el.dataset.prefix || '';
+    let start = 0;
+    const duration = 1200;
+    const step = ts => {
+      if (!start) start = ts;
+      const progress = Math.min((ts - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      el.textContent = prefix + (Number.isInteger(target)
+        ? Math.round(target * ease)
+        : (target * ease).toFixed(1)) + suffix;
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+// ENSO bars
+(function() {
+  const chart = document.getElementById('enso-chart');
+  const barsContainer = document.createElement('div');
+  barsContainer.style.cssText = 'display:flex;align-items:flex-end;width:100%;height:180px;gap:2px;position:relative;z-index:1;';
+  for (let i = 0; i < 98; i++) {
+    const val = 0.8 * Math.sin(2 * Math.PI * i / 4.2) + (Math.random() - 0.5) * 0.6;
+    const h = Math.abs(val) / 2.0 * 100;
+    const bar = document.createElement('div');
+    bar.className = 'enso-bar';
+    bar.style.height = h + '%';
+    bar.style.background = val > 0.5 ? '#ef4444' : val < -0.5 ? '#3b82f6' : '#4b5563';
+    bar.title = (1920 + i) + ': ' + val.toFixed(2);
+    barsContainer.appendChild(bar);
+  }
+  chart.insertBefore(barsContainer, chart.firstChild);
+})();
+</script>
+</body>
+</html>
